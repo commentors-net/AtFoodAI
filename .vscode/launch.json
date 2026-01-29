@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend (Uvicorn)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["backend.app:app", "--reload", "--port", "8000"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/backend/.env"
+    },
+    {
+      "name": "Frontend (Static Server)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "http.server",
+      "args": ["3000"],
+      "cwd": "${workspaceFolder}/frontend"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "ATFOOD (Backend + Frontend)",
+      "configurations": ["Backend (Uvicorn)", "Frontend (Static Server)"],
+      "stopAll": true
+    }
+  ]
+}
