@@ -1,2 +1,4 @@
 .env
 .codex_instructions.md
+__pycache__/
+.vscode/

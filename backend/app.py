@@ -5,6 +5,8 @@ import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from decimal import Decimal
+import json
+import logging
 from typing import Any, Deque, Dict, Optional
 from urllib.parse import urlparse
 
@@ -25,6 +27,16 @@ ATFOOD_CORS_ORIGINS = os.getenv("ATFOOD_CORS_ORIGINS", "")
 DATABASE_URI = os.getenv("DATABASE_URI")
 OPEN_INPUT_PRICE_PER_1K = Decimal(os.getenv("OPEN_INPUT_PRICE_PER_1K", "0"))
 OPEN_OUTPUT_PRICE_PER_1K = Decimal(os.getenv("OPEN_OUTPUT_PRICE_PER_1K", "0"))
+
+LOG_PATH = os.path.join(os.path.expanduser("~"), "logs", "atfoodai", "access.log")
+os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+_logger = logging.getLogger("atfood_access")
+_logger.setLevel(logging.INFO)
+if not _logger.handlers:
+    handler = logging.FileHandler(LOG_PATH, encoding="utf-8")
+    formatter = logging.Formatter("%(message)s")
+    handler.setFormatter(formatter)
+    _logger.addHandler(handler)
 
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY is required")
@@ -194,6 +206,32 @@ def _parse_database_uri(uri: str) -> dict:
     }
 
 
+def _payload_to_dict(payload: AtfoodRequest) -> dict:
+    if hasattr(payload, "model_dump"):
+        return payload.model_dump()
+    return payload.dict()
+
+
+def _redact_headers(headers: dict) -> dict:
+    sensitive = {"x-atfood-token", "authorization", "cookie"}
+    redacted = {}
+    for key, value in headers.items():
+        if key.lower() in sensitive:
+            redacted[key] = "REDACTED"
+        else:
+            redacted[key] = value
+    return redacted
+
+
+def _log_event(event: str, data: dict) -> None:
+    payload = {
+        "event": event,
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        **data,
+    }
+    _logger.info(json.dumps(payload, ensure_ascii=True, default=str))
+
+
 def _get_db_connection():
     cfg = _parse_database_uri(DATABASE_URI)
     return pymysql.connect(
@@ -322,15 +360,66 @@ def atfood_endpoint(
     x_atfood_token: Optional[str] = Header(None, alias="X-ATFOOD-TOKEN"),
     x_atfood_user: Optional[str] = Header(None, alias="X-ATFOOD-USER"),
 ) -> AtfoodResponse:
+    start_time = time.monotonic()
+    client_ip = request.client.host if request.client else "unknown"
+    user_id = (x_atfood_user or "").strip() or client_ip or "demo-user"
+    _log_event(
+        "request",
+        {
+            "method": request.method,
+            "path": request.url.path,
+            "query": request.url.query,
+            "client_ip": client_ip,
+            "user_id": user_id,
+            "headers": _redact_headers(dict(request.headers)),
+            "payload": _payload_to_dict(payload),
+        },
+    )
+
     if ATFOOD_API_TOKEN and x_atfood_token:
         if x_atfood_token != ATFOOD_API_TOKEN:
+            duration_ms = int((time.monotonic() - start_time) * 1000)
+            _log_event(
+                "response",
+                {
+                    "status": 401,
+                    "detail": "Invalid token",
+                    "duration_ms": duration_ms,
+                    "client_ip": client_ip,
+                    "user_id": user_id,
+                },
+            )
             raise HTTPException(status_code=401, detail="Invalid token")
 
-    client_ip = request.client.host if request.client else "unknown"
-    enforce_rate_limit(client_ip)
+    try:
+        enforce_rate_limit(client_ip)
+    except HTTPException as exc:
+        duration_ms = int((time.monotonic() - start_time) * 1000)
+        _log_event(
+            "response",
+            {
+                "status": exc.status_code,
+                "detail": exc.detail,
+                "duration_ms": duration_ms,
+                "client_ip": client_ip,
+                "user_id": user_id,
+            },
+        )
+        raise
 
     prompt_builder = ACTION_PROMPTS.get(payload.action)
     if not prompt_builder:
+        duration_ms = int((time.monotonic() - start_time) * 1000)
+        _log_event(
+            "response",
+            {
+                "status": 400,
+                "detail": "Unknown action",
+                "duration_ms": duration_ms,
+                "client_ip": client_ip,
+                "user_id": user_id,
+            },
+        )
         raise HTTPException(status_code=400, detail="Unknown action")
 
     prompt = prompt_builder(payload)
@@ -339,29 +428,29 @@ def atfood_endpoint(
     if payload.session_id:
         prompt = f"{prompt}Session: {payload.session_id}\n"
 
-    response = CLIENT.responses.create(
-        model=MODEL,
-        instructions=BASE_INSTRUCTIONS,
-        input=prompt,
-    )
-    usage = getattr(response, "usage", None)
-    prompt_tokens = getattr(usage, "input_tokens", None)
-    if prompt_tokens is None:
-        prompt_tokens = getattr(usage, "prompt_tokens", 0)
-    response_tokens = getattr(usage, "output_tokens", None)
-    if response_tokens is None:
-        response_tokens = getattr(usage, "completion_tokens", 0)
-    prompt_tokens = int(prompt_tokens or 0)
-    response_tokens = int(response_tokens or 0)
-    total_cost = (
-        (Decimal(prompt_tokens) * OPEN_INPUT_PRICE_PER_1K)
-        + (Decimal(response_tokens) * OPEN_OUTPUT_PRICE_PER_1K)
-    ) / Decimal("1000")
-    text = extract_output_text(response).strip()
-    if not text:
-        raise HTTPException(status_code=502, detail="Empty response from model")
-    user_id = (x_atfood_user or "").strip() or client_ip or "demo-user"
     try:
+        response = CLIENT.responses.create(
+            model=MODEL,
+            instructions=BASE_INSTRUCTIONS,
+            input=prompt,
+        )
+        usage = getattr(response, "usage", None)
+        prompt_tokens = getattr(usage, "input_tokens", None)
+        if prompt_tokens is None:
+            prompt_tokens = getattr(usage, "prompt_tokens", 0)
+        response_tokens = getattr(usage, "output_tokens", None)
+        if response_tokens is None:
+            response_tokens = getattr(usage, "completion_tokens", 0)
+        prompt_tokens = int(prompt_tokens or 0)
+        response_tokens = int(response_tokens or 0)
+        total_cost = (
+            (Decimal(prompt_tokens) * OPEN_INPUT_PRICE_PER_1K)
+            + (Decimal(response_tokens) * OPEN_OUTPUT_PRICE_PER_1K)
+        ) / Decimal("1000")
+        text = extract_output_text(response).strip()
+        if not text:
+            raise HTTPException(status_code=502, detail="Empty response from model")
+
         _store_conversation(
             user_id,
             payload.action,
@@ -371,11 +460,52 @@ def atfood_endpoint(
             response_tokens,
             total_cost,
         )
-    except Exception:
-        raise HTTPException(status_code=500, detail="Failed to save conversation")
-    return AtfoodResponse(
-        text=text,
-        prompt_tokens=prompt_tokens,
-        response_tokens=response_tokens,
-        total_cost=total_cost,
-    )
+        duration_ms = int((time.monotonic() - start_time) * 1000)
+        _log_event(
+            "response",
+            {
+                "status": 200,
+                "duration_ms": duration_ms,
+                "client_ip": client_ip,
+                "user_id": user_id,
+                "model": MODEL,
+                "prompt": prompt,
+                "response_text": text,
+                "prompt_tokens": prompt_tokens,
+                "response_tokens": response_tokens,
+                "total_cost": total_cost,
+            },
+        )
+        return AtfoodResponse(
+            text=text,
+            prompt_tokens=prompt_tokens,
+            response_tokens=response_tokens,
+            total_cost=total_cost,
+        )
+    except HTTPException as exc:
+        duration_ms = int((time.monotonic() - start_time) * 1000)
+        _log_event(
+            "response",
+            {
+                "status": exc.status_code,
+                "detail": exc.detail,
+                "duration_ms": duration_ms,
+                "client_ip": client_ip,
+                "user_id": user_id,
+            },
+        )
+        raise
+    except Exception as exc:
+        duration_ms = int((time.monotonic() - start_time) * 1000)
+        _log_event(
+            "response",
+            {
+                "status": 500,
+                "detail": str(exc),
+                "duration_ms": duration_ms,
+                "client_ip": client_ip,
+                "user_id": user_id,
+            },
+        )
+        _logger.exception("Unhandled exception while processing request")
+        raise
