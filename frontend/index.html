@@ -1,92 +1,700 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ATFOOD MVP Test</title>
-    <style>
-      body {
-        font-family: Arial, Helvetica, sans-serif;
-        margin: 40px;
-        color: #1f2933;
-      }
-      button {
-        padding: 10px 16px;
-        font-size: 16px;
-        cursor: pointer;
-      }
-      #atfood-ai-slot {
-        margin-top: 16px;
-        padding: 12px;
-        border: 1px solid #d0d7de;
-        border-radius: 6px;
-        background: #f8fafc;
-        white-space: pre-wrap;
-      }
-      .hint {
-        margin-top: 12px;
-        font-size: 14px;
-        color: #52606d;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>ATFOOD MVP</h1>
-    <p>Click any button to trigger the backend via <code>/api/atfood</code>.</p>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="ATFOOD — all things food: great recipes, honest notes, and an AI kitchen to adjust for taste and needs." />
+  <meta name="theme-color" content="#fbfaf8" />
+  <title>ATFOOD — All Things Food</title>
 
-    <div class="hint">
-      Optional user input:
-      <input type="text" data-atfood-user-input placeholder="Add constraints..." />
-    </div>
+  <!-- Open Graph -->
+  <meta property="og:title" content="ATFOOD — All Things Food" />
+  <meta property="og:description" content="Great food worldwide. Recipes that aren’t boring. An AI kitchen to adjust for taste and needs." />
+  <meta property="og:type" content="website" />
 
-    <div class="hint">
-      <button data-atfood-action="open_ai_kitchen">
-        Open AI Kitchen
-      </button>
-      <button data-atfood-action="world_picks">
-        World picks
-      </button>
-      <button data-atfood-action="food_era">
-        Food era
-      </button>
-    </div>
+  <style>
+    :root{
+      /* Light-first (default) */
+      --bg: #fbfaf8;
+      --bg2:#f3efe6;
+      --fg: #111318;
+      --muted:#3f4652;
+      --soft:#6b7383;
+      --card:#ffffff;
+      --border: rgba(17,19,24,.12);
+      --shadow: 0 18px 55px rgba(17,19,24,.12);
+      --ring: rgba(17,19,24,.10);
 
-    <div class="hint">
-      <a
-        href="#"
-        data-atfood-action="adjust_recipe"
-        data-recipe-id="chili_crisp_noodles"
-      >
-        Adjust: chili crisp noodles
+      --accent:#ff5a3d;     /* warm tomato */
+      --accent2:#ffd36a;    /* honey */
+      --ok:#1fda7a;
+      --danger:#d93636;
+
+      --max: 1120px;
+      --r: 18px;
+    }
+
+    /* Dark mode (optional) */
+    html[data-theme="dark"]{
+      --bg: #0b0b0c;
+      --bg2:#101114;
+      --fg: #f6f6f7;
+      --muted:#b9bcc4;
+      --soft:#8a8f9c;
+      --card:#13151b;
+      --border: rgba(255,255,255,.10);
+      --shadow: 0 18px 55px rgba(0,0,0,.55);
+      --ring: rgba(255,255,255,.06);
+
+      --accent:#ff5a3d;
+      --accent2:#ffd36a;
+      --ok:#7CFFB2;
+      --danger:#ff7f7f;
+    }
+
+    *{ box-sizing: border-box; }
+    html,body{ height: 100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color: var(--fg);
+      background:
+        radial-gradient(1200px 700px at 20% -10%, rgba(255,90,61,.14), transparent 55%),
+        radial-gradient(1100px 650px at 80% 0%, rgba(255,211,106,.12), transparent 55%),
+        radial-gradient(900px 650px at 60% 120%, rgba(124,255,178,.08), transparent 55%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+      line-height: 1.35;
+      letter-spacing: -0.01em;
+    }
+
+    a{ color: inherit; text-decoration: none; }
+    a:hover{ opacity: .92; }
+
+    .wrap{ max-width: var(--max); margin: 0 auto; padding: 22px 18px 64px; }
+    .skip{
+      position:absolute; left:-999px; top:auto; width:1px; height:1px; overflow:hidden;
+    }
+    .skip:focus{
+      left: 18px; top: 18px; width:auto; height:auto; padding:10px 12px;
+      background: var(--card); border:1px solid var(--border); border-radius: 12px;
+      z-index: 9999;
+    }
+
+    header{
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(10px);
+      background: color-mix(in srgb, var(--bg) 70%, transparent);
+      border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    }
+    .nav{
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 14px 18px;
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-weight: 720;
+      letter-spacing: -0.03em;
+    }
+    .dot{
+      width: 10px; height:10px; border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow: 0 0 0 4px var(--ring);
+    }
+    .brand span{ font-size: 15px; }
+    .brand small{
+      display:block;
+      font-weight: 550;
+      color: var(--soft);
+      letter-spacing: 0;
+      font-size: 12px;
+      margin-top: 1px;
+    }
+
+    .menu{
+      display:flex; align-items:center; gap: 16px;
+      color: var(--muted);
+      font-size: 14px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .menu a{
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+    }
+    .menu a:hover{
+      border-color: var(--border);
+      background: color-mix(in srgb, var(--card) 70%, transparent);
+    }
+
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 70%, transparent);
+      color: var(--fg);
+      font-weight: 650;
+      letter-spacing: -0.01em;
+      box-shadow: 0 10px 30px rgba(0,0,0,.20);
+      cursor: pointer;
+      user-select: none;
+    }
+    .btn:hover{ transform: translateY(-1px); }
+    .btn:active{ transform: translateY(0px); }
+
+    .btn.primary{
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-color: transparent;
+      color: #111;
+      box-shadow: 0 18px 55px rgba(0,0,0,.35);
+    }
+    .btn.ghost{
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .hero{ padding: 48px 0 26px; }
+    .eyebrow{
+      display:inline-flex; align-items:center; gap:10px;
+      color: var(--muted);
+      font-size: 14px;
+      padding: 7px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--card) 65%, transparent);
+    }
+    .spark{
+      width: 10px; height:10px;
+      border-radius: 4px;
+      background: var(--ok);
+      box-shadow: 0 0 0 4px rgba(124,255,178,.10);
+    }
+
+    h1{
+      font-size: clamp(42px, 6vw, 66px);
+      line-height: 1.02;
+      margin: 16px 0 12px;
+      letter-spacing: -0.04em;
+    }
+    .sub{
+      max-width: 62ch;
+      color: var(--muted);
+      font-size: clamp(16px, 2vw, 18px);
+      line-height: 1.55;
+      margin: 0 0 18px;
+    }
+
+    .cta{
+      display:flex; gap: 12px; flex-wrap: wrap;
+      margin: 18px 0 18px;
+    }
+
+    .kpi{
+      display:flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      color: var(--soft);
+      font-size: 14px;
+      margin-top: 16px;
+    }
+    .kpi b{ color: var(--fg); font-weight: 700; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+      margin-top: 24px;
+    }
+    .card{
+      grid-column: span 4;
+      padding: 18px 18px 16px;
+      border-radius: var(--r);
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 80%, transparent);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      min-height: 156px;
+    }
+    .card::before{
+      content:"";
+      position:absolute; inset:-1px;
+      background:
+        radial-gradient(500px 180px at 20% -20%, rgba(255,90,61,.20), transparent 55%),
+        radial-gradient(500px 180px at 90% 0%, rgba(255,211,106,.12), transparent 55%);
+      opacity: .55;
+      pointer-events: none;
+    }
+    .card > *{ position: relative; }
+    .card h3{
+      margin: 2px 0 8px;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+    .card p{ margin:0; color: var(--muted); line-height: 1.55; }
+    .card a.more{
+      display:inline-flex; align-items:center; gap:8px;
+      margin-top: 12px;
+      color: var(--fg);
+      font-weight: 650;
+      opacity: .92;
+    }
+    .card a.more:hover{ opacity: 1; }
+
+    .section{
+      margin-top: 28px;
+      padding-top: 10px;
+    }
+    .section h2{
+      margin: 0 0 10px;
+      font-size: 26px;
+      letter-spacing: -0.03em;
+    }
+    .section .lead{
+      margin: 0 0 16px;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 70ch;
+    }
+
+    .split{
+      display:grid;
+      grid-template-columns: 7fr 5fr;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .panel{
+      padding: 18px;
+      border-radius: var(--r);
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 80%, transparent);
+      box-shadow: var(--shadow);
+      max-height: 600px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .tagrow{ display:flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .tag{
+      font-size: 13px;
+      color: var(--muted);
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 60%, transparent);
+    }
+
+    .formrow{ display:flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .input{
+      flex: 1 1 320px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--bg2) 55%, transparent);
+      color: var(--fg);
+      outline: none;
+    }
+    .input::placeholder{ color: color-mix(in srgb, var(--muted) 75%, transparent); }
+
+    .mini{
+      font-size: 13px;
+      color: var(--soft);
+      line-height: 1.55;
+      margin-top: 10px;
+    }
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 70%, transparent);
+      color: var(--fg);
+    }
+
+    footer{
+      margin-top: 42px;
+      padding-top: 22px;
+      border-top: 1px solid var(--border);
+      color: var(--soft);
+      display:flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+    }
+
+    .right{
+      display:flex; gap:10px; align-items:center; flex-wrap: wrap; justify-content:flex-end;
+    }
+
+    .pillbtn{
+      padding: 9px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor:pointer;
+    }
+    .pillbtn:hover{
+      background: color-mix(in srgb, var(--card) 60%, transparent);
+      color: var(--fg);
+    }
+
+    /* AI slot styling (your widget can replace this entirely) */
+    #atfood-ai-slot{
+      margin-top: 10px;
+      border-radius: var(--r);
+      border: 1px dashed color-mix(in srgb, var(--border) 85%, transparent);
+      background: color-mix(in srgb, var(--bg2) 45%, transparent);
+      padding: 16px;
+      min-height: 120px;
+      overflow: auto;
+    }
+    .atfood-ai-chat{
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .atfood-ai-messages{
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .atfood-ai-msg{
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--card) 85%, transparent);
+      border: 1px solid var(--border);
+      max-width: 88%;
+      white-space: pre-wrap;
+    }
+    .atfood-ai-msg.user{
+      align-self: flex-end;
+      background: color-mix(in srgb, var(--accent2) 30%, var(--card) 70%);
+      text-align: right;
+    }
+    .ai-placeholder{
+      display:flex;
+      align-items:flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .ai-placeholder h4{
+      margin: 0 0 6px;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+    }
+    .ai-placeholder p{ margin: 0; color: var(--muted); line-height: 1.55; }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      .btn{ transition: none !important; }
+    }
+
+    /* Responsive */
+    @media (max-width: 920px){
+      .card{ grid-column: span 6; }
+      .split{ grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px){
+      .card{ grid-column: span 12; }
+      .menu{ display:none; }
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header>
+    <div class="nav">
+      <a class="brand" href="/" aria-label="ATFOOD Home">
+        <span class="dot" aria-hidden="true"></span>
+        <span>
+          ATFOOD
+          <small>All Things Food</small>
+        </span>
       </a>
-      |
-      <a
-        href="#"
-        data-atfood-action="adjust_recipe"
-        data-recipe-id="charred_lemon_chicken"
-      >
-        Adjust: charred lemon chicken
-      </a>
+
+      <nav class="menu" aria-label="Primary">
+        <a href="#recipes">Recipes</a>
+        <a href="#world">World Picks</a>
+        <a href="#ai">AI Kitchen</a>
+        <a href="#about">About</a>
+      </nav>
+
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="pillbtn" id="themeBtn" type="button" aria-label="Toggle theme">Theme</button>
+        <a class="btn primary" href="#ai">Ask ATFOOD</a>
+      </div>
     </div>
+  </header>
 
-    <div class="hint">
-      <button
-        data-atfood-action="critic_notes"
-        data-critic-topic="Texture matters"
-      >
-        Critic notes: texture matters
-      </button>
-    </div>
+  <main id="main" class="wrap">
+    <!-- HERO -->
+    <section class="hero" aria-label="Intro">
+      <div class="eyebrow">
+        <span class="spark" aria-hidden="true"></span>
+        Great food worldwide • recipes + honest notes • adjust for taste & needs
+      </div>
 
-    <div id="atfood-ai-slot">Waiting for response...</div>
+      <h1>All Things Food.<br/>Nothing boring.</h1>
+      <p class="sub">
+        ATFOOD is a chef’s curiosity with a critic’s honesty: recipes that feel alive, flavor-first ideas from around the world,
+        and an AI kitchen that can <em>adapt</em> a dish to your body and your preferences—without turning food into homework.
+      </p>
 
-    <div class="hint">
-      Optional: set <code>data-atfood-token</code> on an element or
-      <code>window.ATFOOD_API_TOKEN</code> to enable token auth.
-    </div>
+      <div class="cta">
+        <a class="btn primary" href="#recipes">Explore recipes</a>
+        <a class="btn" href="#world">See world picks</a>
+        <a class="btn ghost" href="#ai">Try the AI Kitchen →</a>
+      </div>
 
-    <script src="./atfood-config.js"></script>
-    <script src="./marked.min.js"></script>
-    <script src="./atfood-ai.js"></script>
-  </body>
+      <div class="kpi" aria-label="Highlights">
+        <span><b>Flavor first</b> • nutrition included (quietly)</span>
+        <span><b>Adjustable</b> • allergies, sodium, sugar, macros</span>
+        <span><b>Practical</b> • shopping notes, swaps, timing</span>
+      </div>
+
+      <div class="grid" role="list">
+        <article class="card" role="listitem">
+          <h3>Recipes that actually work</h3>
+          <p>Clear steps, real timing, and the “why” behind the technique—so you can riff with confidence.</p>
+          <a class="more" href="#recipes">Browse recipes <span aria-hidden="true">→</span></a>
+        </article>
+
+        <article class="card" role="listitem">
+          <h3>The AI Kitchen (your rules)</h3>
+          <p>Swap ingredients, scale servings, or make it low‑sodium / gluten‑free / dairy‑free—without losing the soul.</p>
+          <a class="more" href="#ai">Open AI Kitchen <span aria-hidden="true">→</span></a>
+        </article>
+
+        <article class="card" role="listitem">
+          <h3>Food critic notes, no snobbery</h3>
+          <p>What to order, what to skip, and what makes a dish “worth it” — written like a friend with taste.</p>
+          <a class="more" href="#world">See world picks <span aria-hidden="true">→</span></a>
+        </article>
+      </div>
+    </section>
+
+    <!-- RECIPES -->
+    <section id="recipes" class="section" aria-label="Recipes">
+      <h2>Recipes (not mundane)</h2>
+      <p class="lead">
+        Start here. A rotating set of “starter bangers” (quick wins) and “weekend flex” dishes (worth the effort).
+        Replace these with your real content whenever you’re ready.
+      </p>
+
+      <div class="grid" role="list">
+        <article class="card" role="listitem">
+          <h3>15‑minute chili crisp noodles</h3>
+          <p>Heat, crunch, and a sauce that clings. Easy to adapt: vegan, low‑sodium, or extra protein.</p>
+          <a class="more" href="#ai">Adjust with AI <span aria-hidden="true">→</span></a>
+        </article>
+        <article class="card" role="listitem">
+          <h3>Charred lemon chicken + herbs</h3>
+          <p>Weeknight-perfect, restaurant aroma. Works with thighs, breasts, tofu, or cauliflower.</p>
+          <a class="more" href="#ai">Adjust with AI <span aria-hidden="true">→</span></a>
+        </article>
+        <article class="card" role="listitem">
+          <h3>Silky tomato soup (no sadness)</h3>
+          <p>Roast the tomatoes. Finish with a bright acid. The difference is night and day.</p>
+          <a class="more" href="#ai">Adjust with AI <span aria-hidden="true">→</span></a>
+        </article>
+      </div>
+    </section>
+
+    <!-- WORLD PICKS -->
+    <section id="world" class="section" aria-label="World picks">
+      <h2>World picks</h2>
+      <p class="lead">
+        A compass for flavor. Cuisines, ingredients, and techniques to pull you out of the boring loop.
+      </p>
+
+      <div class="split">
+        <div class="panel">
+          <h3 style="margin:0 0 8px; letter-spacing:-0.02em;">Your next “food era”</h3>
+          <p style="margin:0; color:var(--muted); line-height:1.6;">
+            Pick one theme for two weeks. Learn 3 sauces. Learn 2 techniques. Suddenly your whole kitchen upgrades.
+          </p>
+
+          <div class="tagrow" aria-label="Themes">
+            <span class="tag">Thai: lime • fish sauce • chili</span>
+            <span class="tag">Mexican: char • salsa • masa</span>
+            <span class="tag">Italian: emulsions • tomatoes • herbs</span>
+            <span class="tag">Middle East: tahini • sumac • smoke</span>
+            <span class="tag">Korean: gochujang • sesame • ferment</span>
+            <span class="tag">French: butter • reduction • patience</span>
+          </div>
+
+          <p class="mini">
+            Tip: build a “flavor kit” shelf. The moment you can reach for 6 staples, the kitchen becomes creative instead of repetitive.
+          </p>
+        </div>
+
+        <aside class="panel" aria-label="Critic notes">
+          <h3 style="margin:0 0 10px; letter-spacing:-0.02em;">Critic notes</h3>
+          <p style="margin:0; color:var(--muted); line-height:1.6;">
+            This section is built for your voice: short, punchy callouts, “order this / skip that,” and what makes a dish real.
+          </p>
+          <div class="tagrow" style="margin-top:12px;">
+            <span class="tag">Texture matters</span>
+            <span class="tag">Acid is the cheat code</span>
+            <span class="tag">Salt ≠ flavor</span>
+            <span class="tag">Heat is a seasoning</span>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- AI KITCHEN -->
+    <section id="ai" class="section" aria-label="AI Kitchen">
+      <h2>AI Kitchen</h2>
+      <p class="lead">
+        This is the “slot” for your ChatGPT‑generated widget or response code.
+        I included both a <b>DOM slot</b> and a <b>global hook</b> so you can mount whatever you want later.
+      </p>
+
+      <div class="panel">
+        <div class="formrow" aria-label="Quick prompt (optional UI)">
+          <input class="input" id="quickPrompt" type="text" data-atfood-user-input
+                 placeholder="Try: ‘Make this recipe low-sodium and dairy-free, but keep it delicious…’" />
+          <button class="btn primary" id="tryAiBtn" type="button" data-atfood-action="open_ai_kitchen">Ask</button>
+        </div>
+
+        <!--
+          ============================
+          AI WIDGET SLOT (PASTE HERE)
+          ============================
+
+          Option A (simplest):
+            Paste your widget <script> right below this comment.
+            Your script can either:
+              1) write into #atfood-ai-slot, OR
+              2) call window.ATFOOD_AI.mount(...) / window.ATFOOD_AI.renderHTML(...)
+
+          Option B (event-based):
+            Listen for "atfood:ready" and mount into detail.slot
+        -->
+        <div id="atfood-ai-slot" aria-live="polite">
+          <div class="ai-placeholder">
+            <div>
+              <h4>ATFOOD AI slot is ready.</h4>
+              <p>
+                Paste your ChatGPT widget/code here, or mount it with:
+                <span class="kbd">window.ATFOOD_AI.mount(fn)</span>
+              </p>
+              <p class="mini">
+                For now this is a placeholder—once you wire the AI, this area becomes your interactive chef/critic.
+              </p>
+            </div>
+            <div>
+              <span class="tag">Hook: <span class="kbd">#atfood-ai-slot</span></span>
+              <span class="tag">Event: <span class="kbd">atfood:ready</span></span>
+            </div>
+          </div>
+        </div>
+
+        <p class="mini">
+          Keyboard idea (optional): press <span class="kbd">/</span> to focus the prompt box.
+        </p>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section id="about" class="section" aria-label="About">
+      <h2>What ATFOOD is</h2>
+      <p class="lead">
+        A guide to good food worldwide—more food than diet. Nutrition is included, but flavor leads.
+        You’ll be able to adjust recipes for maladies or taste without losing what makes the dish great.
+      </p>
+
+      <div class="grid" role="list">
+        <article class="card" role="listitem">
+          <h3>Food-first philosophy</h3>
+          <p>We’re not here to shame ingredients. We’re here to make food better, smarter, and more fun.</p>
+        </article>
+        <article class="card" role="listitem">
+          <h3>Adaptable by default</h3>
+          <p>Allergies, macros, blood pressure, IBS—adjustments should feel possible, not punishing.</p>
+        </article>
+        <article class="card" role="listitem">
+          <h3>Worldwide curiosity</h3>
+          <p>Techniques and flavors travel. ATFOOD collects the best and makes them usable at home.</p>
+        </article>
+      </div>
+    </section>
+
+    <footer aria-label="Footer">
+      <div>© <span id="year"></span> ATFOOD • All Things Food</div>
+      <div class="right">
+        <a class="pillbtn" href="#main">Back to top</a>
+        <a class="pillbtn" href="/cdn-cgi/l/email-protection#83ebe6efefecc3e2f7e5ecece7ade0ecee"><span class="__cf_email__" data-cfemail="d3bbb6bfbfbc93b2a7b5bcbcb7fdb0bcbe">[email&#160;protected]</span></a>
+      </div>
+    </footer>
+  </main>
+
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+  <script>
+    // ---------------------------------------------
+    // Small UX: theme toggle + year + "/" shortcut
+    // ---------------------------------------------
+    (function(){
+      const themeBtn = document.getElementById('themeBtn');
+      const year = document.getElementById('year');
+      const quickPrompt = document.getElementById('quickPrompt');
+
+      year.textContent = new Date().getFullYear();
+
+      // Persist theme (light is default; we only set an attribute for dark)
+      const saved = localStorage.getItem('atfood_theme');
+      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+
+      function syncThemeBtn(){
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        themeBtn.textContent = isDark ? 'Light mode' : 'Dark mode';
+      }
+      syncThemeBtn();
+
+      themeBtn.addEventListener('click', () => {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        if (isDark) document.documentElement.removeAttribute('data-theme');
+        else document.documentElement.setAttribute('data-theme', 'dark');
+
+        localStorage.setItem('atfood_theme', isDark ? '' : 'dark');
+        syncThemeBtn();
+      });
+
+      // "/" focuses prompt
+      window.addEventListener('keydown', (e) => {
+        if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          const tag = (document.activeElement && document.activeElement.tagName) || '';
+          if (!['INPUT','TEXTAREA','SELECT'].includes(tag)) {
+            e.preventDefault();
+            quickPrompt.focus();
+          }
+        }
+      });
+    })();
+  </script>
+  <script src="/atfood-ai/atfood-config.js?v=20260130"></script>
+  <script src="/atfood-ai/marked.min.js?v=20260130"></script>
+  <script src="/atfood-ai/atfood-ai.js?v=20260130"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"32801b3318a24f11a09cb712b7c73193","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
 </html>

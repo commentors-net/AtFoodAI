@@ -271,6 +271,7 @@ def _ensure_conversation_columns():
         "prompt_tokens": "INT DEFAULT 0",
         "response_tokens": "INT DEFAULT 0",
         "total_cost": "DECIMAL(12,6) DEFAULT 0",
+        "response_id": "VARCHAR(128) DEFAULT NULL",
     }
     with _get_db_connection() as conn:
         with conn.cursor() as cursor:
@@ -299,6 +300,7 @@ def _store_conversation(
     prompt_tokens: int,
     response_tokens: int,
     total_cost: Decimal,
+    response_id: Optional[str],
 ) -> None:
     with _get_db_connection() as conn:
         with conn.cursor() as cursor:
@@ -311,9 +313,10 @@ def _store_conversation(
                     response_text,
                     prompt_tokens,
                     response_tokens,
-                    total_cost
+                    total_cost,
+                    response_id
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     user_id,
@@ -323,8 +326,26 @@ def _store_conversation(
                     prompt_tokens,
                     response_tokens,
                     str(total_cost),
+                    response_id,
                 ),
             )
+
+
+def _fetch_last_response_id(user_id: str) -> Optional[str]:
+    with _get_db_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT response_id
+                FROM atfood_conversations
+                WHERE user_id = %s AND response_id IS NOT NULL
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (user_id,),
+            )
+            row = cursor.fetchone()
+    return row[0] if row and row[0] else None
 
 
 def enforce_rate_limit(client_ip: str) -> None:
@@ -429,10 +450,12 @@ def atfood_endpoint(
         prompt = f"{prompt}Session: {payload.session_id}\n"
 
     try:
+        previous_response_id = _fetch_last_response_id(user_id)
         response = CLIENT.responses.create(
             model=MODEL,
             instructions=BASE_INSTRUCTIONS,
             input=prompt,
+            previous_response_id=previous_response_id,
         )
         usage = getattr(response, "usage", None)
         prompt_tokens = getattr(usage, "input_tokens", None)
@@ -451,6 +474,7 @@ def atfood_endpoint(
         if not text:
             raise HTTPException(status_code=502, detail="Empty response from model")
 
+        response_id = getattr(response, "id", None)
         _store_conversation(
             user_id,
             payload.action,
@@ -459,6 +483,7 @@ def atfood_endpoint(
             prompt_tokens,
             response_tokens,
             total_cost,
+            response_id,
         )
         duration_ms = int((time.monotonic() - start_time) * 1000)
         _log_event(
@@ -474,6 +499,8 @@ def atfood_endpoint(
                 "prompt_tokens": prompt_tokens,
                 "response_tokens": response_tokens,
                 "total_cost": total_cost,
+                "response_id": response_id,
+                "previous_response_id": previous_response_id,
             },
         )
         return AtfoodResponse(

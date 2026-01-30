@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ATFOOD MVP Test</title>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 40px;
+        color: #1f2933;
+      }
+      button {
+        padding: 10px 16px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      #atfood-ai-slot {
+        margin-top: 16px;
+        padding: 12px;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        background: #f8fafc;
+        white-space: pre-wrap;
+      }
+      .hint {
+        margin-top: 12px;
+        font-size: 14px;
+        color: #52606d;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ATFOOD MVP</h1>
+    <p>Click any button to trigger the backend via <code>/api/atfood</code>.</p>
+
+    <div class="hint">
+      Optional user input:
+      <input type="text" data-atfood-user-input placeholder="Add constraints..." />
+    </div>
+
+    <div class="hint">
+      <button data-atfood-action="open_ai_kitchen">
+        Open AI Kitchen
+      </button>
+      <button data-atfood-action="world_picks">
+        World picks
+      </button>
+      <button data-atfood-action="food_era">
+        Food era
+      </button>
+    </div>
+
+    <div class="hint">
+      <a
+        href="#"
+        data-atfood-action="adjust_recipe"
+        data-recipe-id="chili_crisp_noodles"
+      >
+        Adjust: chili crisp noodles
+      </a>
+      |
+      <a
+        href="#"
+        data-atfood-action="adjust_recipe"
+        data-recipe-id="charred_lemon_chicken"
+      >
+        Adjust: charred lemon chicken
+      </a>
+    </div>
+
+    <div class="hint">
+      <button
+        data-atfood-action="critic_notes"
+        data-critic-topic="Texture matters"
+      >
+        Critic notes: texture matters
+      </button>
+    </div>
+
+    <div id="atfood-ai-slot">Waiting for response...</div>
+
+    <div class="hint">
+      Optional: set <code>data-atfood-token</code> on an element or
+      <code>window.ATFOOD_API_TOKEN</code> to enable token auth.
+    </div>
+
+    <script src="./atfood-config.js"></script>
+    <script src="./marked.min.js"></script>
+    <script src="./atfood-ai.js"></script>
+  </body>
+</html>

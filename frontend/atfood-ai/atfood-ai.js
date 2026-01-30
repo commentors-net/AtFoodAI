@@ -3,17 +3,85 @@
   const API_URL =
     (typeof window !== "undefined" && window.ATFOOD_API_URL) || "/api/atfood";
   let renderFn = null;
+  const TYPE_SPEED_MS = 18;
 
-  function defaultRender(text) {
+  function ensureChat(slot) {
+    let chat = slot.querySelector(".atfood-ai-chat");
+    if (!chat) {
+      slot.innerHTML = "";
+      chat = document.createElement("div");
+      chat.className = "atfood-ai-chat";
+      const messages = document.createElement("div");
+      messages.className = "atfood-ai-messages";
+      chat.appendChild(messages);
+      slot.appendChild(chat);
+    }
+    return {
+      chat,
+      messages: chat.querySelector(".atfood-ai-messages"),
+    };
+  }
+
+  function appendMessage(messages, role, htmlOrText, isHtml) {
+    const msg = document.createElement("div");
+    msg.className = `atfood-ai-msg ${role}`;
+    if (isHtml) {
+      msg.innerHTML = htmlOrText;
+    } else {
+      msg.textContent = htmlOrText;
+    }
+    messages.appendChild(msg);
+    return msg;
+  }
+
+  function scrollSlotToBottom(slot) {
+    if (!slot) {
+      return;
+    }
+    slot.scrollTop = slot.scrollHeight;
+  }
+
+  function animateTyping(el, text, options = {}) {
+    const { slot, prefix = "" } = options;
+    if (!el) {
+      return;
+    }
+    if (el._typeTimer) {
+      clearInterval(el._typeTimer);
+      el._typeTimer = null;
+    }
+    const full = String(text || "");
+    let i = 0;
+    el.textContent = `${prefix}`;
+    el._typeTimer = setInterval(() => {
+      i += 1;
+      el.textContent = `${prefix}${full.slice(0, i)}`;
+      scrollSlotToBottom(slot);
+      if (i >= full.length) {
+        clearInterval(el._typeTimer);
+        el._typeTimer = null;
+        el.innerHTML = renderMarkdown(`${prefix}${full}`);
+        scrollSlotToBottom(slot);
+      }
+    }, TYPE_SPEED_MS);
+  }
+
+  function defaultRender(text, options = {}) {
     const slot = document.getElementById(SLOT_ID);
     if (!slot) {
       return;
     }
-    slot.innerHTML = `
-      <div class="atfood-ai-response">
-        ${renderMarkdown(text)}
-      </div>
-    `;
+
+    const { messages } = ensureChat(slot);
+    if (options.pendingEl) {
+      animateTyping(options.pendingEl, text, {
+        slot,
+        prefix: "AtFood: ",
+      });
+      return;
+    }
+
+    appendMessage(messages, "assistant", renderMarkdown(text), true);
   }
 
   function renderMarkdown(text) {
@@ -71,8 +139,19 @@
 
   async function sendAction(payload, options = {}) {
     const slot = document.getElementById(SLOT_ID);
+    let pendingEl = null;
     if (slot) {
-      slot.innerHTML = `<div>Thinking...</div>`;
+      const { messages } = ensureChat(slot);
+      if (payload?.user_text) {
+        appendMessage(messages, "user", `You: ${payload.user_text}`, false);
+      }
+      pendingEl = appendMessage(messages, "assistant", "AtFood: Thinking...", false);
+
+      const panel = slot.closest(".panel");
+      const formRow = panel?.querySelector(".formrow");
+      if (panel && formRow && panel.lastElementChild !== formRow) {
+        panel.appendChild(formRow);
+      }
     }
 
     const token = options.token || resolveToken(options.trigger);
@@ -99,11 +178,18 @@
       }
 
       const data = await res.json();
-      (renderFn || defaultRender)(data.text || "");
+      if (renderFn) {
+        renderFn(data.text || "", { pendingEl, slot, typing: true });
+      } else {
+        defaultRender(data.text || "", { pendingEl, slot });
+      }
       return data;
     } catch (err) {
       console.error(err);
-      defaultRender("Sorry - something broke. Try again in a second.");
+      defaultRender("Sorry - something broke. Try again in a second.", {
+        pendingEl,
+        slot,
+      });
       return null;
     }
   }
@@ -129,6 +215,9 @@
     const userBox = document.querySelector("[data-atfood-user-input]");
     const userText = userBox ? userBox.value.trim() : "";
     const sessionId = resolveSessionId(el);
+    if (userBox) {
+      userBox.value = "";
+    }
 
     sendAction(
       {
