@@ -238,5 +238,18 @@
     });
   }, true);
 
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+    const target = event.target;
+    if (!target || !target.matches || !target.matches("[data-atfood-user-input]")) {
+      return;
+    }
+    event.preventDefault();
+    const askBtn = document.querySelector('[data-atfood-action="open_ai_kitchen"]');
+    askBtn?.click();
+  });
+
   window.dispatchEvent(new CustomEvent("atfood:ready"));
 })();
