@@ -3,7 +3,6 @@
   const API_URL =
     (typeof window !== "undefined" && window.ATFOOD_API_URL) || "/api/atfood";
   let renderFn = null;
-  const TYPE_SPEED_MS = 18;
 
   function ensureChat(slot) {
     let chat = slot.querySelector(".atfood-ai-chat");
@@ -34,38 +33,6 @@
     return msg;
   }
 
-  function scrollSlotToBottom(slot) {
-    if (!slot) {
-      return;
-    }
-    slot.scrollTop = slot.scrollHeight;
-  }
-
-  function animateTyping(el, text, options = {}) {
-    const { slot, prefix = "" } = options;
-    if (!el) {
-      return;
-    }
-    if (el._typeTimer) {
-      clearInterval(el._typeTimer);
-      el._typeTimer = null;
-    }
-    const full = String(text || "");
-    let i = 0;
-    el.textContent = `${prefix}`;
-    el._typeTimer = setInterval(() => {
-      i += 1;
-      el.textContent = `${prefix}${full.slice(0, i)}`;
-      scrollSlotToBottom(slot);
-      if (i >= full.length) {
-        clearInterval(el._typeTimer);
-        el._typeTimer = null;
-        el.innerHTML = renderMarkdown(`${prefix}${full}`);
-        scrollSlotToBottom(slot);
-      }
-    }, TYPE_SPEED_MS);
-  }
-
   function defaultRender(text, options = {}) {
     const slot = document.getElementById(SLOT_ID);
     if (!slot) {
@@ -74,10 +41,7 @@
 
     const { messages } = ensureChat(slot);
     if (options.pendingEl) {
-      animateTyping(options.pendingEl, text, {
-        slot,
-        prefix: "AtFood: ",
-      });
+      options.pendingEl.innerHTML = renderMarkdown(`AtFood: ${text || ""}`);
       return;
     }
 
