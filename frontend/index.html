@@ -294,6 +294,7 @@
       border-radius: 999px;
       border: 1px solid var(--border);
       background: color-mix(in srgb, var(--card) 60%, transparent);
+      cursor: pointer;
     }
 
     .formrow{ display:flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
@@ -474,19 +475,19 @@
         <article class="card" role="listitem">
           <h3>Recipes that actually work</h3>
           <p>Clear steps, real timing, and the “why” behind the technique—so you can riff with confidence.</p>
-          <a class="more" href="#recipes">Browse recipes <span aria-hidden="true">→</span></a>
+          <a class="more" href="#ai" data-atfood-action="adjust_recipe" data-recipe-id="recipes_browse">Browse recipes <span aria-hidden="true">→</span></a>
         </article>
 
         <article class="card" role="listitem">
           <h3>The AI Kitchen (your rules)</h3>
           <p>Swap ingredients, scale servings, or make it low‑sodium / gluten‑free / dairy‑free—without losing the soul.</p>
-          <a class="more" href="#ai">Open AI Kitchen <span aria-hidden="true">→</span></a>
+          <a class="more" href="#ai" data-atfood-action="open_ai_kitchen">Open AI Kitchen <span aria-hidden="true">→</span></a>
         </article>
 
         <article class="card" role="listitem">
           <h3>Food critic notes, no snobbery</h3>
           <p>What to order, what to skip, and what makes a dish “worth it” — written like a friend with taste.</p>
-          <a class="more" href="#world">See world picks <span aria-hidden="true">→</span></a>
+          <a class="more" href="#ai" data-atfood-action="critic_notes" data-critic-topic="World picks">See world picks <span aria-hidden="true">→</span></a>
         </article>
       </div>
     </section>
@@ -503,17 +504,17 @@
         <article class="card" role="listitem">
           <h3>15‑minute chili crisp noodles</h3>
           <p>Heat, crunch, and a sauce that clings. Easy to adapt: vegan, low‑sodium, or extra protein.</p>
-          <a class="more" href="#ai">Adjust with AI <span aria-hidden="true">→</span></a>
+          <a class="more" href="#ai" data-atfood-action="adjust_recipe" data-recipe-id="chili_crisp_noodles">Adjust with AI <span aria-hidden="true">→</span></a>
         </article>
         <article class="card" role="listitem">
           <h3>Charred lemon chicken + herbs</h3>
           <p>Weeknight-perfect, restaurant aroma. Works with thighs, breasts, tofu, or cauliflower.</p>
-          <a class="more" href="#ai">Adjust with AI <span aria-hidden="true">→</span></a>
+          <a class="more" href="#ai" data-atfood-action="adjust_recipe" data-recipe-id="charred_lemon_chicken">Adjust with AI <span aria-hidden="true">→</span></a>
         </article>
         <article class="card" role="listitem">
           <h3>Silky tomato soup (no sadness)</h3>
           <p>Roast the tomatoes. Finish with a bright acid. The difference is night and day.</p>
-          <a class="more" href="#ai">Adjust with AI <span aria-hidden="true">→</span></a>
+          <a class="more" href="#ai" data-atfood-action="adjust_recipe" data-recipe-id="silky_tomato_soup">Adjust with AI <span aria-hidden="true">→</span></a>
         </article>
       </div>
     </section>
@@ -533,12 +534,12 @@
           </p>
 
           <div class="tagrow" aria-label="Themes">
-            <span class="tag">Thai: lime • fish sauce • chili</span>
-            <span class="tag">Mexican: char • salsa • masa</span>
-            <span class="tag">Italian: emulsions • tomatoes • herbs</span>
-            <span class="tag">Middle East: tahini • sumac • smoke</span>
-            <span class="tag">Korean: gochujang • sesame • ferment</span>
-            <span class="tag">French: butter • reduction • patience</span>
+            <button class="tag" type="button" data-atfood-action="critic_notes" data-critic-topic="Thai flavor era">Thai: lime • fish sauce • chili</button>
+            <button class="tag" type="button" data-atfood-action="critic_notes" data-critic-topic="Mexican flavor era">Mexican: char • salsa • masa</button>
+            <button class="tag" type="button" data-atfood-action="critic_notes" data-critic-topic="Italian flavor era">Italian: emulsions • tomatoes • herbs</button>
+            <button class="tag" type="button" data-atfood-action="critic_notes" data-critic-topic="Middle East flavor era">Middle East: tahini • sumac • smoke</button>
+            <button class="tag" type="button" data-atfood-action="critic_notes" data-critic-topic="Korean flavor era">Korean: gochujang • sesame • ferment</button>
+            <button class="tag" type="button" data-atfood-action="critic_notes" data-critic-topic="French flavor era">French: butter • reduction • patience</button>
           </div>
 
           <p class="mini">
@@ -552,10 +553,10 @@
             This section is built for your voice: short, punchy callouts, “order this / skip that,” and what makes a dish real.
           </p>
           <div class="tagrow" style="margin-top:12px;">
-            <span class="tag">Texture matters</span>
-            <span class="tag">Acid is the cheat code</span>
-            <span class="tag">Salt ≠ flavor</span>
-            <span class="tag">Heat is a seasoning</span>
+            <button class="tag" type="button" data-atfood-action="critic_notes" data-critic-topic="Texture matters">Texture matters</button>
+            <button class="tag" type="button" data-atfood-action="critic_notes" data-critic-topic="Acid is the cheat code">Acid is the cheat code</button>
+            <button class="tag" type="button" data-atfood-action="critic_notes" data-critic-topic="Salt ≠ flavor">Salt ≠ flavor</button>
+            <button class="tag" type="button" data-atfood-action="critic_notes" data-critic-topic="Heat is a seasoning">Heat is a seasoning</button>
           </div>
         </aside>
       </div>
@@ -564,10 +565,6 @@
     <!-- AI KITCHEN -->
     <section id="ai" class="section" aria-label="AI Kitchen">
       <h2>AI Kitchen</h2>
-      <p class="lead">
-        This is the “slot” for your ChatGPT‑generated widget or response code.
-        I included both a <b>DOM slot</b> and a <b>global hook</b> so you can mount whatever you want later.
-      </p>
 
       <div class="panel">
         <div class="formrow" aria-label="Quick prompt (optional UI)">
@@ -593,18 +590,7 @@
         <div id="atfood-ai-slot" aria-live="polite">
           <div class="ai-placeholder">
             <div>
-              <h4>ATFOOD AI slot is ready.</h4>
-              <p>
-                Paste your ChatGPT widget/code here, or mount it with:
-                <span class="kbd">window.ATFOOD_AI.mount(fn)</span>
-              </p>
-              <p class="mini">
-                For now this is a placeholder—once you wire the AI, this area becomes your interactive chef/critic.
-              </p>
-            </div>
-            <div>
-              <span class="tag">Hook: <span class="kbd">#atfood-ai-slot</span></span>
-              <span class="tag">Event: <span class="kbd">atfood:ready</span></span>
+          
             </div>
           </div>
         </div>
@@ -691,9 +677,10 @@
       });
     })();
   </script>
-  <script src="/atfood-ai/atfood-config.js?v=20260130-"></script>
+  <script src="/atfood-ai/atfood-config.js?v=20260130"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js" crossorigin="anonymous"></script>
   <script src="/atfood-ai/marked.min.js?v=20260130"></script>
-  <script src="/atfood-ai/atfood-ai.js?v=202601301"></script>
+  <script src="/atfood-ai/atfood-ai.js?v=202601303"></script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"32801b3318a24f11a09cb712b7c73193","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>

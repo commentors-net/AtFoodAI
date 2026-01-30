@@ -33,6 +33,13 @@
     return msg;
   }
 
+  function scrollSlotToBottom(slot) {
+    if (!slot) {
+      return;
+    }
+    slot.scrollTop = slot.scrollHeight;
+  }
+
   function defaultRender(text, options = {}) {
     const slot = document.getElementById(SLOT_ID);
     if (!slot) {
@@ -42,18 +49,45 @@
     const { messages } = ensureChat(slot);
     if (options.pendingEl) {
       options.pendingEl.innerHTML = renderMarkdown(`AtFood: ${text || ""}`);
+      scrollSlotToBottom(slot);
       return;
     }
 
     appendMessage(messages, "assistant", renderMarkdown(text), true);
+    scrollSlotToBottom(slot);
   }
 
   function renderMarkdown(text) {
     if (typeof window !== "undefined" && window.marked?.parse) {
-      return window.marked.parse(text || "");
+      const html = window.marked.parse(text || "");
+      return sanitizeHtml(html);
     }
     const safe = escapeHtml(text || "");
     return `<pre style="white-space:pre-wrap;margin:0;">${safe}</pre>`;
+  }
+
+  function sanitizeHtml(html) {
+    if (typeof window !== "undefined" && window.DOMPurify?.sanitize) {
+      return window.DOMPurify.sanitize(html);
+    }
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("script, style, iframe, object, embed, link").forEach((el) => {
+      el.remove();
+    });
+    doc.querySelectorAll("*").forEach((el) => {
+      [...el.attributes].forEach((attr) => {
+        const name = attr.name.toLowerCase();
+        const value = String(attr.value || "");
+        if (name.startsWith("on")) {
+          el.removeAttribute(attr.name);
+          return;
+        }
+        if ((name === "href" || name === "src") && value.trim().toLowerCase().startsWith("javascript:")) {
+          el.removeAttribute(attr.name);
+        }
+      });
+    });
+    return doc.body.innerHTML;
   }
 
   function escapeHtml(str) {
@@ -110,6 +144,7 @@
         appendMessage(messages, "user", `You: ${payload.user_text}`, false);
       }
       pendingEl = appendMessage(messages, "assistant", "AtFood: Thinking...", false);
+      scrollSlotToBottom(slot);
 
       const panel = slot.closest(".panel");
       const formRow = panel?.querySelector(".formrow");
@@ -182,6 +217,10 @@
     if (userBox) {
       userBox.value = "";
     }
+    const slot = document.getElementById(SLOT_ID);
+    if (slot) {
+      slot.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 
     sendAction(
       {
@@ -197,7 +236,7 @@
         .getElementById(SLOT_ID)
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-  });
+  }, true);
 
   window.dispatchEvent(new CustomEvent("atfood:ready"));
 })();
